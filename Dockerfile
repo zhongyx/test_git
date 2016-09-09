@@ -1,22 +1,18 @@
-FROM debian:jessie
+# Using a compact OS
+FROM alpine:latest
 
-ENV DEBIAN_FRONTEND noninteractive
+MAINTAINER Golfen Guo <golfen.guo@daocloud.io> 
 
-RUN apt-get update -y
-RUN apt-get install -y nginx php5-fpm php5-mysqlnd php5-cli mysql-server supervisor
-
-RUN sed -e 's/;daemonize = yes/daemonize = no/' -i /etc/php5/fpm/php-fpm.conf
-RUN sed -e 's/;listen\.owner/listen.owner/' -i /etc/php5/fpm/pool.d/www.conf
-RUN sed -e 's/;listen\.group/listen.group/' -i /etc/php5/fpm/pool.d/www.conf
-RUN echo "\ndaemon off;" >> /etc/nginx/nginx.conf
-
-ADD vhost.conf /etc/nginx/sites-available/default
-ADD supervisor.conf /etc/supervisor/conf.d/supervisor.conf
-ADD init.sh /init.sh
+# Install and configure Nginx
+RUN apk --update add nginx
+RUN sed -i "s#root   html;#root   /usr/share/nginx/html;#g" /etc/nginx/nginx.conf
+RUN ln -sf /dev/stdout /var/log/nginx/access.log \
+	&& ln -sf /dev/stderr /var/log/nginx/error.log
+	
+# Add 2048 stuff into Nginx server
+COPY . /usr/share/nginx/html
 
 EXPOSE 80
 
-VOLUME ["/srv"]
-WORKDIR /srv
-
-CMD ["/usr/bin/supervisord"]
+# Start Nginx and keep it from running background
+CMD ["nginx", "-g", "pid /tmp/nginx.pid; daemon off;"]
